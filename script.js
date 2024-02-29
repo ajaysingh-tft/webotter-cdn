@@ -1,17 +1,26 @@
 const BASE_URL = "http://203.110.83.71:65000";
 
 let socket;
-const project_id = "b4fa3aab-b1da-43cf-b882-62a9f3dd32f4";
-const api_key = "fdcb1e0e-ac7e-4ce2-a19e-2c9fef0b1e96"
 
 let uuid = localStorage.getItem("uuid");
-
-if (!uuid) {
-  uuid = generateUUID();
-  console.log('session id not found')
-  localStorage.setItem("uuid", uuid);
-} else {
-  console.log('session id found')
+export const initializeBot = ({ apiKey, projectId }) => {
+  if (!apiKey) {
+    console.log('apiKey not provided') 
+    return;
+  } else if (!projectId) {
+    console.log('projectId not provided')
+    return;
+  }
+  if (apiKey && projectId) {
+    if (!uuid) {
+      uuid = generateUUID();
+      console.log('session id not found')
+      localStorage.setItem("uuid", uuid);
+    } else {
+      console.log('session id found')
+    }
+    startWebSocketConnection({apiKey, projectId});
+  }
 }
 
 function generateUUID() {
@@ -23,158 +32,152 @@ function generateUUID() {
   });
 }
 
+function startWebSocketConnection({apiKey, projectId}) {
+  console.log('started ws');
+  showLoadingAnimation();
+  fetch(`${BASE_URL}/projects/configurations/?project_id=${projectId}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      api_key: apiKey,
+    }),
+  })
+    .then((response) => response.json())
+    .then((configData) => {
+      const botColor = configData.custom_colour;
+      const botPosition = configData.bot_position;
 
-document.addEventListener("DOMContentLoaded", () => {
-  fetchBotConfig();
-  startWebSocketConnection();
+      const chatHeader = document.querySelector(".chat-header");
+      chatHeader.style.backgroundColor = botColor;
 
-  function fetchBotConfig() {
-    showLoadingAnimation();
-    fetch(`${BASE_URL}/projects/configurations/?project_id=378091bc-1043-42f6-ba47-cc8d8a282415/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        api_key: api_key, 
-      }),
+      const chatContainer = document.querySelector(".chat-container");
+      chatContainer.style.right = botPosition === "right" ? "10px" : "";
+      chatContainer.style.left = botPosition === "left" ? "10px" : "";
+      hideLoadingAnimation();
     })
-      .then((response) => response.json())
-      .then((configData) => {
-        const botColor = configData.custom_colour;
-        const botPosition = configData.bot_position;
-
-        const chatHeader = document.querySelector(".chat-header");
-        chatHeader.style.backgroundColor = botColor;
-
-        const chatContainer = document.querySelector(".chat-container");
-        chatContainer.style.right = botPosition === "right" ? "10px" : "";
-        chatContainer.style.left = botPosition === "left" ? "10px" : "";
-        hideLoadingAnimation();
-      })
-      .catch((error) => {
-        console.error("Error:", error);
-        hideLoadingAnimation();
-      });
-  }
-
-  function startWebSocketConnection() {
-    const webSocketUrl = `ws://203.110.83.71:65000/ws/chat/${project_id}/${uuid}/`;
-
-    const updateConnectionStatus = (isConnected) => {
-      const connectionStatusElement = document.getElementsByClassName("connection-status")[0];
-      connectionStatusElement.style.marginLeft = "1rem";
-      if (isConnected) {
-        connectionStatusElement.textContent = "Online"
-      } else {
-        connectionStatusElement.textContent = "Offline"
-      }
-    };
-  
-    socket = new WebSocket(webSocketUrl);
-
-    socket.addEventListener("open", (event) => {
-      console.log("Connected to the WebSocket server");
-      updateConnectionStatus(true);
+    .catch((error) => {
+      console.error("Error:", error);
+      hideLoadingAnimation();
     });
-  
-    socket.addEventListener("message", (event) => {
-      console.log("Received message from server:", event);
-      const data = JSON.parse(event.data);
-      console.log("data", data);
-      sendBotMessage(data.message);
-    });
-  
-    socket.addEventListener("close", (event) => {
-      console.log("Connection closed:", event);
-      updateConnectionStatus(false);
-    });
-  }
 
-  startWebSocketConnection();
-  const chatContainer = document.createElement("div");
-  chatContainer.classList.add("chat-container");
-  document.body.appendChild(chatContainer);
+  const webSocketUrl = `ws://203.110.83.71:65000/ws/chat/${projectId}/${uuid}/`;
 
-  const chatHeader = document.createElement("div");
-  chatHeader.classList.add("chat-header");
-
-  const leftContainer = document.createElement("div");
-  leftContainer.classList.add("left-container");
-
-  const profileImage = document.createElement("div");
-  profileImage.classList.add("profile-image");
-  const profileName = document.createElement("div");
-  profileName.classList.add("profile-name");
-  profileName.textContent = "Design test 01";
-
-  // connection status
-  const connectionStatus = document.createElement("div");
-  connectionStatus.classList.add("connection-status");
-
-  leftContainer.appendChild(profileImage);
-  leftContainer.appendChild(profileName);
-  leftContainer.appendChild(connectionStatus)
-
-  const rightContainer = document.createElement("div");
-  rightContainer.classList.add("right-container");
-
-  const hideImage = document.createElement("img");
-  hideImage.src = "assets/hide.svg";
-  let isChatExpanded = false;
-  hideImage.addEventListener("click", () => {
-    if (!isChatExpanded) {
-      chatContainer.style.height = "45px";
+  const updateConnectionStatus = (isConnected) => {
+    const connectionStatusElement = document.getElementsByClassName("connection-status")[0];
+    connectionStatusElement.style.marginLeft = "1rem";
+    if (isConnected) {
+      connectionStatusElement.textContent = "Online"
     } else {
-      chatContainer.style.height = "347px";
+      connectionStatusElement.textContent = "Offline"
     }
-    isChatExpanded = !isChatExpanded;
+  };
+
+  socket = new WebSocket(webSocketUrl);
+
+  socket.addEventListener("open", (event) => {
+    console.log("Connected to the WebSocket server");
+    updateConnectionStatus(true);
   });
-  const crossImage = document.createElement("img");
-  crossImage.src = "assets/cross.svg";
-  crossImage.addEventListener("click", () => {
-    chatContainer.style.display = "none";
+
+  socket.addEventListener("message", (event) => {
+    console.log("Received message from server:", event);
+    const data = JSON.parse(event.data);
+    console.log("data", data);
+    sendBotMessage(data.message);
   });
 
-  rightContainer.appendChild(hideImage);
-  rightContainer.appendChild(crossImage);
+  socket.addEventListener("close", (event) => {
+    console.log("Connection closed:", event);
+    updateConnectionStatus(false);
+  });
 
-  chatHeader.appendChild(leftContainer);
-  chatHeader.appendChild(rightContainer);
+  
+// startWebSocketConnection();
+const chatContainer = document.createElement("div");
+chatContainer.classList.add("chat-container");
+document.body.appendChild(chatContainer);
 
-  chatContainer.appendChild(chatHeader);
+const chatHeader = document.createElement("div");
+chatHeader.classList.add("chat-header");
 
-  const chatMessages = document.createElement("div");
-  chatMessages.classList.add("chat-messages");
-  chatMessages.id = "chat-messages";
-  chatContainer.appendChild(chatMessages);
+const leftContainer = document.createElement("div");
+leftContainer.classList.add("left-container");
 
-  const chatInputContainer = document.createElement("div");
-  chatInputContainer.classList.add("chat-input");
-  chatContainer.appendChild(chatInputContainer);
+const profileImage = document.createElement("div");
+profileImage.classList.add("profile-image");
+const profileName = document.createElement("div");
+profileName.classList.add("profile-name");
+profileName.textContent = "Design test 01";
 
-  const alphabetImage = document.createElement("img");
-  alphabetImage.id = "alphabet-img";
-  alphabetImage.src = "assets/alphabet.svg";
-  alphabetImage.alt = "Alphabet";
-  chatInputContainer.appendChild(alphabetImage);
+// connection status
+const connectionStatus = document.createElement("div");
+connectionStatus.classList.add("connection-status");
 
-  const userInput = document.createElement("input");
-  userInput.type = "text";
-  userInput.id = "user-input";
-  userInput.placeholder = "Type your text here";
-  chatInputContainer.appendChild(userInput);
+leftContainer.appendChild(profileImage);
+leftContainer.appendChild(profileName);
+leftContainer.appendChild(connectionStatus)
 
-  const sendButton = document.createElement("button");
-  const sendImage = document.createElement("img");
-  sendImage.src = "assets/send-btn.svg";
-  sendImage.alt = "Send";
-  sendButton.appendChild(sendImage);
-  sendButton.id = "sendButton";
-  chatInputContainer.appendChild(sendButton);
+const rightContainer = document.createElement("div");
+rightContainer.classList.add("right-container");
 
-  const styleElement = document.createElement("style");
-  styleElement.textContent = `
+const hideImage = document.createElement("img");
+hideImage.src = "assets/hide.svg";
+let isChatExpanded = false;
+hideImage.addEventListener("click", () => {
+  if (!isChatExpanded) {
+    chatContainer.style.height = "45px";
+  } else {
+    chatContainer.style.height = "347px";
+  }
+  isChatExpanded = !isChatExpanded;
+});
+const crossImage = document.createElement("img");
+crossImage.src = "assets/cross.svg";
+crossImage.addEventListener("click", () => {
+  chatContainer.style.display = "none";
+});
+
+rightContainer.appendChild(hideImage);
+rightContainer.appendChild(crossImage);
+
+chatHeader.appendChild(leftContainer);
+chatHeader.appendChild(rightContainer);
+
+chatContainer.appendChild(chatHeader);
+
+const chatMessages = document.createElement("div");
+chatMessages.classList.add("chat-messages");
+chatMessages.id = "chat-messages";
+chatContainer.appendChild(chatMessages);
+
+const chatInputContainer = document.createElement("div");
+chatInputContainer.classList.add("chat-input");
+chatContainer.appendChild(chatInputContainer);
+
+const alphabetImage = document.createElement("img");
+alphabetImage.id = "alphabet-img";
+alphabetImage.src = "assets/alphabet.svg";
+alphabetImage.alt = "Alphabet";
+chatInputContainer.appendChild(alphabetImage);
+
+const userInput = document.createElement("input");
+userInput.type = "text";
+userInput.id = "user-input";
+userInput.placeholder = "Type your text here";
+chatInputContainer.appendChild(userInput);
+
+const sendButton = document.createElement("button");
+const sendImage = document.createElement("img");
+sendImage.src = "assets/send-btn.svg";
+sendImage.alt = "Send";
+sendButton.appendChild(sendImage);
+sendButton.id = "sendButton";
+chatInputContainer.appendChild(sendButton);
+
+const styleElement = document.createElement("style");
+styleElement.textContent = `
   body {
     font-family: Arial, sans-serif;
     position: relative;
@@ -352,120 +355,126 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 `;
 
-  document.head.appendChild(styleElement);
+document.head.appendChild(styleElement);
 
-  sendButton.addEventListener("click", () => {
+sendButton.addEventListener("click", () => {
+  sendUserMessage(userInput.value);
+  socket.addEventListener("close", (event) => {
+    return;
+  });
+});
+
+userInput.addEventListener("keypress", (event) => {
+  socket.addEventListener("close", (event) => {
+    return;
+  });
+  if (event.key === "Enter") {
     sendUserMessage(userInput.value);
-  });
-
-  userInput.addEventListener("keypress", (event) => {
-    if (event.key === "Enter") {
-      sendUserMessage(userInput.value);
-    }
-  });
-
-  const sendUserMessage = async (msg) => {
-    try {
-      await socket.send(JSON.stringify({ message: msg, language: "en", project_id: project_id }));
-    } catch (error) {
-      console.error("Failed to send message:", error);
-      throw error;
-    }
-    const InputMessage = msg;
-    if (msg.trim() !== "") {
-      const userMesageWrapper = document.createElement("div");
-      userMesageWrapper.classList.add("user-message-wrapper");
-
-      const message = document.createElement("div");
-      message.classList.add("message");
-
-      const messageMeta = document.createElement("div");
-
-      const author = document.createElement("span");
-      messageMeta.id = "author";
-      messageMeta.textContent = "User";
-
-      messageMeta.appendChild(author);
-
-      const chatMessageContainer = document.createElement("div");
-      chatMessageContainer.classList.add("chatMessageContainer");
-
-      const timeStamp = document.createElement("span");
-      timeStamp.id = "time";
-      timeStamp.textContent = new Date().toLocaleTimeString();
-
-      const chatMessage = document.createElement("div");
-      chatMessage.classList.add("chat-message");
-      chatMessage.innerText = InputMessage;
-
-      chatMessageContainer.appendChild(timeStamp);
-      chatMessageContainer.appendChild(chatMessage);
-
-      message.appendChild(messageMeta);
-      message.appendChild(chatMessageContainer);
-
-      userMesageWrapper.appendChild(message);
-      chatMessages.appendChild(userMesageWrapper);
-      userInput.value = "";
-      userMesageWrapper.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  };
-
-  const sendBotMessage = (msg) => {
-    if (msg.trim() !== "") {
-      const botMesageWrapper = document.createElement("div");
-      botMesageWrapper.classList.add("bot-message-wrapper");
-
-      const message = document.createElement("div");
-      message.classList.add("message");
-
-      const messageMeta = document.createElement("div");
-
-      const author = document.createElement("span");
-      messageMeta.id = "bot";
-      author.textContent = "Bot";
-
-      messageMeta.appendChild(author);
-
-      const chatMessageContainer = document.createElement("div");
-      chatMessageContainer.classList.add("chatMessageContainer");
-
-      const chatMessage = document.createElement("div");
-      chatMessage.classList.add("bot-message");
-      chatMessage.innerText = msg;
-
-      const timeStamp = document.createElement("span");
-      timeStamp.id = "time";
-      timeStamp.textContent = new Date().toLocaleTimeString();
-
-      chatMessageContainer.appendChild(chatMessage);
-      chatMessageContainer.appendChild(timeStamp);
-
-      message.appendChild(messageMeta);
-      message.appendChild(chatMessageContainer);
-
-      botMesageWrapper.appendChild(message);
-      chatMessages.appendChild(botMesageWrapper);
-
-      botMesageWrapper.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  };
-
-  function showLoadingAnimation() {
-    const loadingContainer = document.createElement("div");
-    loadingContainer.id = "loading-container";
-
-    const loadingSpinner = document.createElement("div");
-    loadingSpinner.id = "loading-spinner";
-
-    loadingContainer.appendChild(loadingSpinner);
-    document.body.appendChild(loadingContainer);
-  }
-
-  function hideLoadingAnimation() {
-    const loadingContainer = document.getElementById("loading-container");
-    if (loadingContainer) {
-      document.body.removeChild(loadingContainer);
-    }
   }
 });
+
+const sendUserMessage = async (msg) => {
+  try {
+    await socket.send(JSON.stringify({ message: msg, language: "en", project_id: projectId }));
+  } catch (error) {
+    console.error("Failed to send message:", error);
+    throw error;
+  }
+  const InputMessage = msg;
+  if (msg.trim() !== "") {
+    const userMesageWrapper = document.createElement("div");
+    userMesageWrapper.classList.add("user-message-wrapper");
+
+    const message = document.createElement("div");
+    message.classList.add("message");
+
+    const messageMeta = document.createElement("div");
+
+    const author = document.createElement("span");
+    messageMeta.id = "author";
+    messageMeta.textContent = "User";
+
+    messageMeta.appendChild(author);
+
+    const chatMessageContainer = document.createElement("div");
+    chatMessageContainer.classList.add("chatMessageContainer");
+
+    const timeStamp = document.createElement("span");
+    timeStamp.id = "time";
+    timeStamp.textContent = new Date().toLocaleTimeString();
+
+    const chatMessage = document.createElement("div");
+    chatMessage.classList.add("chat-message");
+    chatMessage.innerText = InputMessage;
+
+    chatMessageContainer.appendChild(timeStamp);
+    chatMessageContainer.appendChild(chatMessage);
+
+    message.appendChild(messageMeta);
+    message.appendChild(chatMessageContainer);
+
+    userMesageWrapper.appendChild(message);
+    chatMessages.appendChild(userMesageWrapper);
+    userInput.value = "";
+    userMesageWrapper.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+};
+
+const sendBotMessage = (msg) => {
+  if (msg.trim() !== "") {
+    const botMesageWrapper = document.createElement("div");
+    botMesageWrapper.classList.add("bot-message-wrapper");
+
+    const message = document.createElement("div");
+    message.classList.add("message");
+
+    const messageMeta = document.createElement("div");
+
+    const author = document.createElement("span");
+    messageMeta.id = "bot";
+    author.textContent = "Bot";
+
+    messageMeta.appendChild(author);
+
+    const chatMessageContainer = document.createElement("div");
+    chatMessageContainer.classList.add("chatMessageContainer");
+
+    const chatMessage = document.createElement("div");
+    chatMessage.classList.add("bot-message");
+    chatMessage.innerText = msg;
+
+    const timeStamp = document.createElement("span");
+    timeStamp.id = "time";
+    timeStamp.textContent = new Date().toLocaleTimeString();
+
+    chatMessageContainer.appendChild(chatMessage);
+    chatMessageContainer.appendChild(timeStamp);
+
+    message.appendChild(messageMeta);
+    message.appendChild(chatMessageContainer);
+
+    botMesageWrapper.appendChild(message);
+    chatMessages.appendChild(botMesageWrapper);
+
+    botMesageWrapper.scrollIntoView({ behavior: "smooth", block: "end" });
+  }
+};
+
+function showLoadingAnimation() {
+  const loadingContainer = document.createElement("div");
+  loadingContainer.id = "loading-container";
+
+  const loadingSpinner = document.createElement("div");
+  loadingSpinner.id = "loading-spinner";
+
+  loadingContainer.appendChild(loadingSpinner);
+  document.body.appendChild(loadingContainer);
+}
+
+function hideLoadingAnimation() {
+  const loadingContainer = document.getElementById("loading-container");
+  if (loadingContainer) {
+    document.body.removeChild(loadingContainer);
+  }
+}
+}
