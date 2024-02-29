@@ -123,7 +123,7 @@ const rightContainer = document.createElement("div");
 rightContainer.classList.add("right-container");
 
 const hideImage = document.createElement("img");
-hideImage.src = "assets/hide.svg";
+hideImage.src = "https://cdn.jsdelivr.net/gh/ajaysingh-tft/webotter-cdn@main/Bot/assets/hide.svg";
 let isChatExpanded = false;
 hideImage.addEventListener("click", () => {
   if (!isChatExpanded) {
@@ -134,7 +134,7 @@ hideImage.addEventListener("click", () => {
   isChatExpanded = !isChatExpanded;
 });
 const crossImage = document.createElement("img");
-crossImage.src = "assets/cross.svg";
+crossImage.src = "https://cdn.jsdelivr.net/gh/ajaysingh-tft/webotter-cdn@main/Bot/assets/cross.svg";
 crossImage.addEventListener("click", () => {
   chatContainer.style.display = "none";
 });
@@ -158,7 +158,7 @@ chatContainer.appendChild(chatInputContainer);
 
 const alphabetImage = document.createElement("img");
 alphabetImage.id = "alphabet-img";
-alphabetImage.src = "assets/alphabet.svg";
+alphabetImage.src = "https://cdn.jsdelivr.net/gh/ajaysingh-tft/webotter-cdn@main/Bot/assets/alphabet.svg";
 alphabetImage.alt = "Alphabet";
 chatInputContainer.appendChild(alphabetImage);
 
@@ -170,7 +170,7 @@ chatInputContainer.appendChild(userInput);
 
 const sendButton = document.createElement("button");
 const sendImage = document.createElement("img");
-sendImage.src = "assets/send-btn.svg";
+sendImage.src = "https://cdn.jsdelivr.net/gh/ajaysingh-tft/webotter-cdn@main/Bot/assets/send-btn.svg";
 sendImage.alt = "Send";
 sendButton.appendChild(sendImage);
 sendButton.id = "sendButton";
